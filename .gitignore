@@ -1,0 +1,5 @@
+*.pyc
+__pycache__/
+temp_*.csv
+bikeshare_env/  
+*.csv  
