@@ -6,7 +6,7 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
                 subset_stations=None, subset_times=None,
                 time_limit=120):
     """
-    Solve the exact MILP from your professor's document.
+    Solve the exact MILP model.
     """
     # Load data
     if data_source == 'sample':
