@@ -1,4 +1,3 @@
-# model.py
 from pyscipopt import Model as SCIPModel, quicksum
 from gurobipy import Model as GurobiModel, GRB
 import data
@@ -6,7 +5,7 @@ import data
 def solve_model(use_fleet_constraint=False, data_source='sample',
                 h=0.1, p=10.0, F=5, M=10000,
                 subset_stations=None, subset_times=None,
-                time_limit=120, solver="scip"):  # ← NEW PARAMETER
+                time_limit=300, solver="scip"):  # ← NEW PARAMETER
     """
     Solve the exact MILP model using either SCIP or Gurobi.
     """

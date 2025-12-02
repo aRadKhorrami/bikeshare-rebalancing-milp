@@ -22,8 +22,8 @@ with st.sidebar:
         trip_file = st.file_uploader("202510-capitalbikeshare-tripdata.csv", type="csv")
         station_file = st.file_uploader("Capital_Bikeshare_Locations.csv", type="csv")
         time_bin = st.selectbox("Time granularity", ['1h', '2h', '4h'], index=1)
-        n_stations = st.slider("Top N busiest stations", 5, 812, 12)
-        n_periods = st.slider("Time periods to optimize", 3, 12, 6)
+        n_stations = st.slider("Top N busiest stations", 5, 812, 100)
+        n_periods = st.slider("Time periods to optimize", 3, 12, 12)
     else:
         st.success("Using sample data")
 
@@ -35,7 +35,7 @@ with st.sidebar:
     use_fleet = st.checkbox("Limit number of trucks", value=True)
     F = st.number_input("Maximum trucks available", 1, 15, 5) if use_fleet else 5
 
-    time_limit = st.number_input("Max solving time (seconds)", 30, 300, 120)
+    time_limit = st.number_input("Max solving time (seconds)", 30, 1200, 300)
 
     st.markdown("### Solver")
     solver_choice = st.radio(
@@ -83,7 +83,7 @@ if st.button("RUN OPTIMIZATION", type="primary", use_container_width=True):
             subset_stations=subset_s,
             subset_times=subset_t,
             time_limit=time_limit,
-            solver="gurobi" if "Gurobi" in solver_choice else "scip"   # ← KEY LINE
+            solver="gurobi" if "Gurobi" in solver_choice else "scip"   
         )
 
     if results:
