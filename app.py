@@ -22,7 +22,7 @@ with st.sidebar:
         trip_file = st.file_uploader("202510-capitalbikeshare-tripdata.csv", type="csv")
         station_file = st.file_uploader("Capital_Bikeshare_Locations.csv", type="csv")
         time_bin = st.selectbox("Time granularity", ['1h', '2h', '4h'], index=1)
-        n_stations = st.slider("Top N busiest stations", 5, 25, 12)
+        n_stations = st.slider("Top N busiest stations", 5, 812, 12)
         n_periods = st.slider("Time periods to optimize", 3, 12, 6)
     else:
         st.success("Using sample data")
@@ -78,17 +78,21 @@ if st.button("RUN OPTIMIZATION", type="primary", use_container_width=True):
         )
 
     if results:
-        st.success(f"OPTIMAL SOLUTION FOUND! Total Cost = ${results['obj_val']:,.2f}")
-        st.balloons()
+        if results.get('obj_val') and isinstance(results['obj_val'], (int, float, complex)):
+            cost = float(results['obj_val'])
+            st.success(f"SOLUTION FOUND! Total Cost = ${cost:,.2f}")
+            st.balloons()
+        else:
+            st.warning(f"Feasible solution found • Best known cost: {results['obj_val']} (not proven optimal)")
 
-        # Results tabs
+        # === Show results tabs even if not fully optimal ===
         tab1, tab2, tab3, tab4 = st.tabs(["Inventory", "Unmet Demand", "Rebalancing Plan", "Visualization"])
 
         with tab1:
             st.subheader("Bike Inventory Over Time (I_{i,t})")
             I_df = pd.DataFrame([
                 {"Station": s, "Time": t, "Bikes": results['I'][(s,t)]}
-                for (s,t) in results['I'].keys()
+                for (s,t) in results['I']
             ])
             st.dataframe(I_df.pivot(index="Station", columns="Time", values="Bikes").round(1))
 
@@ -96,7 +100,7 @@ if st.button("RUN OPTIMIZATION", type="primary", use_container_width=True):
             st.subheader("Unmet Demand (B_{i,t})")
             B_df = pd.DataFrame([
                 {"Station": s, "Time": t, "Lost Rentals": results['B'][(s,t)]}
-                for (s,t) in results['B'].keys()
+                for (s,t) in results['B']
             ])
             pivot = B_df.pivot(index="Station", columns="Time", values="Lost Rentals").fillna(0)
             st.dataframe(pivot.style.background_gradient(cmap='Reds'))
@@ -113,7 +117,7 @@ if st.button("RUN OPTIMIZATION", type="primary", use_container_width=True):
         with tab4:
             st.subheader("Bike Levels Over Time")
             fig = go.Figure()
-            for station in I_df["Station"].unique()[:10]:
+            for station in sorted(set(s for (s,t) in results['I']))[:10]:
                 df_s = I_df[I_df["Station"] == station]
                 fig.add_trace(go.Scatter(
                     x=df_s["Time"], y=df_s["Bikes"],
@@ -127,7 +131,7 @@ if st.button("RUN OPTIMIZATION", type="primary", use_container_width=True):
             )
             st.plotly_chart(fig, use_container_width=True)
 
-        # Download
+        # Download button
         csv = pd.DataFrame.from_dict(results['I'], orient='index', columns=['Bikes']).to_csv()
         st.download_button(
             label="Download Full Results (CSV)",
