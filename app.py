@@ -9,7 +9,7 @@ import os
 # Page config
 st.set_page_config(page_title="Bikeshare Rebalancing - Ali Rad Khorrami", layout="wide")
 st.title("Bikeshare Rebalancing Problem: Final MILP Model")
-st.markdown("**Ali Rad Khorrami** – November 2025")
+st.markdown("**Ali Rad Khorrami** – December 2025")
 st.markdown("---")
 
 # Sidebar
@@ -36,6 +36,14 @@ with st.sidebar:
     F = st.number_input("Maximum trucks available", 1, 15, 5) if use_fleet else 5
 
     time_limit = st.number_input("Max solving time (seconds)", 30, 300, 120)
+
+    st.markdown("### Solver")
+    solver_choice = st.radio(
+        "Select MILP Solver",
+        options=["SCIP (pyscipopt)", "Gurobi"],
+        index=0,
+        help="Gurobi is much faster for large instances if you have a license."
+    )
 
 # Main app
 if st.button("RUN OPTIMIZATION", type="primary", use_container_width=True):
@@ -74,7 +82,8 @@ if st.button("RUN OPTIMIZATION", type="primary", use_container_width=True):
             h=h, p=p, F=F,
             subset_stations=subset_s,
             subset_times=subset_t,
-            time_limit=time_limit
+            time_limit=time_limit,
+            solver="gurobi" if "Gurobi" in solver_choice else "scip"   # ← KEY LINE
         )
 
     if results:
@@ -146,4 +155,4 @@ if st.button("RUN OPTIMIZATION", type="primary", use_container_width=True):
 
 # Footer
 st.markdown("---")
-st.markdown("**Ali Rad Khorrami** | Capital Bikeshare Rebalancing | November 2025")
+st.markdown("**Ali Rad Khorrami** | Capital Bikeshare Rebalancing | December 2025")
