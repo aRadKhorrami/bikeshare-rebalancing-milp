@@ -1,3 +1,21 @@
+"""
+Bikeshare Rebalancing Problem: Final MILP Model
+===============================================
+
+This module implements the exact Mixed-Integer Linear Programming (MILP) model
+as defined in the final project proposal (December 2025) by Ali Rad Khorrami,
+incorporating feedback from Professor Lenz.
+
+The model minimizes total transportation, holding, and unmet demand penalty costs
+over a discrete time horizon using real Capital Bikeshare data from October 2025.
+
+Mathematical formulation matches Sections 5–6 of the proposal:
+- Objective: min Σ c_ij f_ijt + h Σ I_it + p Σ B_it
+- Constraints: bike balance, capacity, non-negativity, optional fleet size
+
+Supports both **SCIP** and **Gurobi** solvers (Gurobi recommended for large instances).
+"""
+
 from pyscipopt import Model as SCIPModel, quicksum
 from gurobipy import Model as GurobiModel, GRB
 import data
@@ -7,7 +25,58 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
                 subset_stations=None, subset_times=None,
                 time_limit=300, solver="scip"):  # ← NEW PARAMETER
     """
-    Solve the exact MILP model using either SCIP or Gurobi.
+    Solve the bikeshare rebalancing MILP using SCIP or Gurobi.
+
+    Implements constraints 6.1–6.4 exactly as in the final proposal:
+        6.1 Bike balance
+        6.2 Station capacity
+        6.3 Non-negativity
+        6.4 (Optional) Fleet-size constraint with big-M linking
+
+    Parameters
+    ----------
+    use_fleet_constraint : bool, default=False
+        If True, limits number of simultaneous truck movements ≤ F using binary x_ijt.
+    data_source : {'sample', 'real'}, default='sample'
+        Source of input data. 'real' loads October 2025 Capital Bikeshare trip data.
+    h : float, default=0.1
+        Holding cost per bike per time period ($/bike/period).
+    p : float, default=10.0
+        Penalty cost per unmet rental demand ($/lost rental).
+    F : int, default=5
+        Maximum number of trucks available (only used if use_fleet_constraint=True).
+    M : int, default=10000
+        Big-M constant for logical linking constraints.
+    subset_stations : list or None, default=None
+        Subset of station names to include (for large-scale testing, e.g., top 100).
+    subset_times : list or None, default=None
+        Subset of time periods to solve (e.g., first 12 two-hour periods).
+    time_limit : int, default=300
+        Maximum solving time in seconds.
+    solver : {'scip', 'gurobi'}, default='scip'
+        MILP solver to use. Gurobi is significantly faster for large instances.
+
+    Returns
+    -------
+    results : dict
+        Dictionary containing:
+            - 'f': {(i,j,t): value} – number of bikes transported
+            - 'I': {(i,t): value} – inventory at end of period
+            - 'B': {(i,t): value} – unmet demand (slack)
+            - 'x': {(i,j,t): 0/1} – truck usage (if fleet constraint active)
+            - 'obj_val': float – optimal (or best found) objective value
+    status : str
+        Solver status: 'optimal', 'timelimit', 'infeasible', etc.
+
+    Notes
+    -----
+    - Station names are used as keys (string-based indexing).
+    - Euclidean distance used as transportation cost c_ij.
+    - Initial inventory I0 set to ~50% of capacity.
+
+    See Also
+    --------
+    data.load_real_data : Loads and processes real October 2025 data.
     """
     # Load data (same as before)
     if data_source == 'sample':

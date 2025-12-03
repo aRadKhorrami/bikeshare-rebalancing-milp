@@ -1,0 +1,27 @@
+Bikeshare Rebalancing: Final MILP Model
+=======================================
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Contents:
+
+   modules
+
+Welcome to the documentation!
+This project implements the exact MILP model from the final proposal (November 2025)
+using real Capital Bikeshare October 2025 data.
+
+Key Features
+------------
+- Real 624,869 trips from October 2025
+- PySCIPOpt / Gurobi solver
+- Interactive Streamlit dashboard
+- 90% service level achievable
+- Fleet size constraint
+
+Mathematical Model
+------------------
+Full formulation is available in the `proposal PDF <https://github.com/aRadKhorrami/bikeshare-rebalancing-milp/blob/main/Bikeshare%20Rebalancing%20Problem%20-%20Final%20MILP%20Model%20Proposal.pdf>`_
+
+Modules
+-------

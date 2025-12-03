@@ -1,3 +1,22 @@
+"""
+Bikeshare Rebalancing Dashboard
+===============================
+
+Interactive Streamlit web application for solving and visualizing
+the bikeshare rebalancing MILP model on real or sample data.
+
+Features:
+- Upload real October 2025 trip and station data
+- Select top N busiest stations and time horizon
+- Choose between SCIP and Gurobi solvers
+- View inventory, unmet demand, and rebalancing plan
+- Interactive Plotly visualizations
+- Download results as CSV
+
+Author: Ali Rad Khorrami  
+Date: December 2025  
+Project: Final MILP Model for Bikeshare Rebalancing
+"""
 import streamlit as st
 import pandas as pd
 import plotly.express as px

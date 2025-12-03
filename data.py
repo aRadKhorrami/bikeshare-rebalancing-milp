@@ -1,7 +1,22 @@
+"""
+Data Loading and Preprocessing for Bikeshare Rebalancing
+========================================================
+
+This module handles loading and preprocessing of real Capital Bikeshare data
+from October 2025 for use in the MILP rebalancing model.
+
+Key features:
+- Matches trip data with station metadata using station names
+- Aggregates demand by user-defined time bins (1h, 2h, 4h)
+- Computes Euclidean distance matrix as transportation cost proxy
+- Sets realistic initial inventory (~50% capacity)
+"""
+
 import numpy as np
 import pandas as pd
 
 def get_sample_data():
+    """Return small synthetic dataset for quick testing and debugging."""
     stations = [1, 2, 3]
     times = [1, 2]
     I0 = {1: 10, 2: 5, 3: 0}
@@ -16,6 +31,25 @@ def get_sample_data():
 
 
 def process_trip_data_to_demands(trip_file, time_bin='2h'):
+    """
+    Convert raw trip CSV into demand matrix D_it.
+
+    Parameters
+    ----------
+    trip_file : str or file-like
+        Path to Capital Bikeshare trip data CSV.
+    time_bin : str, default='2h'
+        Pandas frequency string for time aggregation (e.g., '1h', '2h', '4h').
+
+    Returns
+    -------
+    stations : list
+        List of station names appearing in trips.
+    times : list
+        Integer time period indices (1, 2, ..., T).
+    D : dict
+        Demand dictionary {(station, time): count}
+    """
     print(f"   → Reading {trip_file}...")
     df = pd.read_csv(trip_file, low_memory=False)
     df['started_at'] = pd.to_datetime(df['started_at'])
@@ -37,6 +71,27 @@ def process_trip_data_to_demands(trip_file, time_bin='2h'):
 
 
 def load_station_data(station_file):
+    """
+    Load station metadata (name, capacity, coordinates) from CSV.
+
+    Parameters
+    ----------
+    station_file : str or file-like
+        Path to station locations CSV (from DC Open Data).
+
+    Returns
+    -------
+    stations : list
+        Station names.
+    C : dict
+        Capacity {station: capacity}
+    c : dict
+        Distance matrix {(i,j): euclidean_distance}
+    I0 : dict
+        Initial inventory {station: bikes}
+    coords : dict
+        Coordinates {station: (lat, lon)}
+    """
     print(f"   → Reading {station_file}...")
     df = pd.read_csv(station_file)
     print(f"   → {len(df)} stations loaded")
@@ -81,6 +136,24 @@ def load_station_data(station_file):
 
 
 def load_real_data(trip_file, station_file, time_bin='2h'):
+    """
+    Load and merge real trip and station data for the MILP model.
+
+    Matches stations by name, filters to common stations, and returns
+    all parameters required by :func:`model.solve_model`.
+
+    Parameters
+    ----------
+    trip_file, station_file : str
+        Paths to trip and station CSVs.
+    time_bin : str, default='2h'
+        Time aggregation granularity.
+
+    Returns
+    -------
+    S, T, I0, C, D, c, h, p, F, M
+        All inputs required by the optimization model.
+    """
     stations1, times, D = process_trip_data_to_demands(trip_file, time_bin)
     stations2, C, c, I0, coords = load_station_data(station_file)
     
