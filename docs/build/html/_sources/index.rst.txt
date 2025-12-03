@@ -20,7 +20,7 @@ Key Features
 
 Mathematical Model
 ------------------
-Full formulation is available in the `proposal PDF <https://github.com/aRadKhorrami/bikeshare-rebalancing-milp/blob/main/Bikeshare%20Rebalancing%20Problem%20-%20Final%20MILP%20Model%20Proposal.pdf>`_
+Full formulation is available in the `proposal PDF <https://github.com/aRadKhorrami/bikeshare-rebalancing-milp/blob/main/Bikeshare_Rebalancing_Final_Proposal.pdf>`_
 
 Modules
 -------
