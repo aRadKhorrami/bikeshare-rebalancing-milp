@@ -23,7 +23,7 @@ import data
 def solve_model(use_fleet_constraint=False, data_source='sample',
                 h=0.1, p=10.0, F=5, M=10000,
                 subset_stations=None, subset_times=None,
-                time_limit=300, solver="scip"):  # ← NEW PARAMETER
+                time_limit=300, gap_limit=0.01, solver="scip"):  
     """
     Solve the bikeshare rebalancing MILP using SCIP or Gurobi.
 
@@ -104,7 +104,8 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
         model = GurobiModel("Bikeshare_Rebalancing_Gurobi")
         model.setParam('TimeLimit', time_limit)
         model.setParam('OutputFlag', 0)  # Suppress Gurobi log (optional)
-        # model.setParam('MIPGap', 0.01)  # Optional: set gap tolerance
+        if gap_limit > 0:
+            model.setParam('MIPGap', gap_limit)  # Set gap tolerance for Gurobi
 
         # Variables (Gurobi syntax)
         f = {(i,j,t): model.addVar(vtype=GRB.CONTINUOUS, lb=0, name=f"f_{i}_{j}_{t}")
@@ -145,6 +146,10 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
                     if i != j:
                         for t in T:
                             model.addConstr(f[(i,j,t)] <= M * x[(i,j,t)], name=f"link_{i}_{j}_{t}")
+        # Service-level constraint from PDF Section 8: B_i,t <= 0.1 * D_i,t (90% fulfillment per station-period)
+        for i in S:
+            for t in T:
+                model.addConstr(B[(i,t)] <= 0.1 * D[(i,t)], name=f"service_{i}_{t}")
 
         # Optimize
         model.optimize()
@@ -168,6 +173,10 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
     else:  # Default: SCIP (original code)
         model = SCIPModel("Bikeshare_Rebalancing")
         model.setParam('limits/time', time_limit)
+
+        # To get the best solution on timeout
+        model.setParam('limits/gap', gap_limit)  # User's gap limit (e.g., 0.01 for 1%)
+        model.setParam('limits/absgap', 0.0)
 
         f = {(i,j,t): model.addVar(vtype="C", lb=0, name=f"f_{i}_{j}_{t}")
              for i in S for j in S if i != j for t in T}
@@ -205,20 +214,57 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
                     if i != j:
                         for t in T:
                             model.addCons(f[(i,j,t)] <= M * x[(i,j,t)], f"link_{i}_{j}_{t}")
+        
+        # Service-level constraint from PDF Section 8: B_i,t <= 0.1 * D_i,t (90% fulfillment per station-period)
+        for i in S:
+            for t in T:
+                model.addCons(B[(i,t)] <= 0.1 * D[(i,t)], name=f"service_{i}_{t}")
 
         model.optimize()
         status = model.getStatus()
 
-        if status in ["optimal", "timelimit"]:
-            obj_val = model.getObjVal() if status == "optimal" else "timeout"
-            results = {
-                'f': {(i,j,t): model.getVal(f[(i,j,t)]) for i in S for j in S if i != j for t in T},
-                'I': {(i,t): model.getVal(I[(i,t)]) for i in S for t in T},
-                'B': {(i,t): model.getVal(B[(i,t)]) for i in S for t in T},
-                'obj_val': obj_val
-            }
-            if use_fleet_constraint:
-                results['x'] = {(i,j,t): model.getVal(x[(i,j,t)]) for i in S for j in S if i != j for t in T}
-            return results, status
+        if status in ["optimal", "timelimit", "gaplimit", "userinterrupt"]:
+            try:
+                # Try to get the best found solution
+                if model.getNSols() > 0:  # If at least one solution was found
+                    obj_val = model.getObjVal()  # Best found solution
+                    is_optimal = (status == "optimal")
+                    
+                    # Get gap for both timelimit AND gap limit reached
+                    if status in ["timelimit", "gaplimit"]:
+                        try:
+                            gap_value = model.getGap()
+                            if gap_value is None:
+                                gap_value = 0.0
+                        except:
+                            gap_value = 0.0
+                    else:
+                        gap_value = 0.0
+                else:
+                    obj_val = None
+                    is_optimal = False
+                    gap_value = 0.0
+                        
+                if obj_val is not None:
+                    results = {
+                        'f': {(i,j,t): model.getVal(f[(i,j,t)]) 
+                              for i in S for j in S if i != j for t in T},
+                        'I': {(i,t): model.getVal(I[(i,t)]) for i in S for t in T},
+                        'B': {(i,t): model.getVal(B[(i,t)]) for i in S for t in T},
+                        'obj_val': obj_val,
+                        'is_optimal': is_optimal,  
+                        'gap': gap_value
+                    }
+                    if use_fleet_constraint:
+                        results['x'] = {(i,j,t): model.getVal(x[(i,j,t)]) 
+                                        for i in S for j in S if i != j for t in T}
+                    return results, status
+                else:
+                    return None, "no_solution_found"
+                    
+            except Exception as e:
+                # If there's an error extracting values
+                print(f"Warning: Could not extract solution values: {e}")
+                return None, f"error_extracting_solution: {str(e)}"
         else:
             return None, status

@@ -53,8 +53,45 @@ with st.sidebar:
     st.markdown("### Fleet")
     use_fleet = st.checkbox("Limit number of trucks", value=True)
     F = st.number_input("Maximum trucks available", 1, 15, 5) if use_fleet else 5
-
+    
+    st.markdown("#### ⏱️ Time Limit")
     time_limit = st.number_input("Max solving time (seconds)", 30, 1200, 300)
+
+    # GAP LIMIT CONTROL
+    st.markdown("#### 📊 Optimality Tolerance")
+    col1, col2 = st.columns([3, 1])
+    with col1:
+        gap_limit = st.slider(
+            "Acceptable optimality gap (%)",
+            min_value=0.1,
+            max_value=20.0,
+            value=1.0,
+            step=0.1,
+            help="Higher = faster solutions, Lower = more accurate"
+        )
+    with col2:
+        st.metric("Gap", f"{gap_limit}%")
+    
+    # Visual indicator of what gap means
+    if gap_limit < 1:
+        st.info("🔍 **High Accuracy**: Will try to find solution within 1% of optimal")
+    elif gap_limit < 5:
+        st.info("⚖️ **Balanced**: Good balance between speed and accuracy")
+    else:
+        st.info("⚡ **Fast**: Will accept solution within 5%+ of optimal for speed")
+    
+    # Trade-off explanation
+    with st.expander("ℹ️ What does 'optimality gap' mean?"):
+        st.markdown("""
+        **Optimality Gap** is how close the solution needs to be to the absolute best:
+        
+        - **0% gap** = Must find the mathematically optimal solution (slowest)
+        - **1% gap** = Solution can be up to 1% worse than optimal (balanced)
+        - **5% gap** = Solution can be up to 5% worse than optimal (faster)
+        - **10% gap** = Solution can be up to 10% worse than optimal (fastest)
+        
+        For large problems, even 1% gap solutions are often good enough!
+        """) 
 
     st.markdown("### Solver")
     solver_choice = st.radio(
@@ -102,16 +139,31 @@ if st.button("RUN OPTIMIZATION", type="primary", use_container_width=True):
             subset_stations=subset_s,
             subset_times=subset_t,
             time_limit=time_limit,
+            gap_limit=gap_limit/100.0,  # Convert percentage to decimal
             solver="gurobi" if "Gurobi" in solver_choice else "scip"   
         )
 
     if results:
-        if results.get('obj_val') and isinstance(results['obj_val'], (int, float, complex)):
-            cost = float(results['obj_val'])
-            st.success(f"SOLUTION FOUND! Total Cost = ${cost:,.2f}")
-            st.balloons()
+        # optimality check - integrated handling
+        is_optimal = results.get('is_optimal', True)
+        obj_val = results.get('obj_val')
+        gap = results.get('gap', 0.0)
+
+        if obj_val and isinstance(obj_val, (int, float)):
+            if status == "gaplimit":
+                # Special message for gap limit reached
+                st.info(f"✅ Solution found within acceptable tolerance! (Gap: {gap*100:.2f}%)")
+                st.success(f"Best Cost = ${obj_val:,.2f}")
+                st.balloons()
+            elif is_optimal:
+                st.success(f"✅ **OPTIMAL SOLUTION FOUND!** Total Cost = ${obj_val:,.2f}")
+                st.balloons()
+            else:
+                st.warning(f"⏱️ **BEST SOLUTION FOUND (Time Limit)**")
+                st.info(f"Best Cost = ${obj_val:,.2f} | Gap = {gap*100:.2f}% | Not proven optimal")
+                st.balloons()
         else:
-            st.warning(f"Feasible solution found • Best known cost: {results['obj_val']} (not proven optimal)")
+            st.warning(f"Feasible solution found • Best known cost: {obj_val}")
 
         # === Show results tabs even if not fully optimal ===
         tab1, tab2, tab3, tab4 = st.tabs(["Inventory", "Unmet Demand", "Rebalancing Plan", "Visualization"])
