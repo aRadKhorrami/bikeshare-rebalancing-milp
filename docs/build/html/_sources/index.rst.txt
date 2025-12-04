@@ -1,4 +1,4 @@
-Bikeshare Rebalancing: Final MILP Model
+Bikeshare Rebalancing: MILP Model
 =======================================
 
 .. toctree::
@@ -16,6 +16,7 @@ Key Features
 - Real 624,869 trips from October 2025
 - PySCIPOpt / Gurobi solver
 - Interactive Streamlit dashboard
+- service-level constraint
 - Fleet size constraint
 
 Mathematical Model
