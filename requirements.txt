@@ -1,0 +1,16 @@
+# ──────────────────────────────────────────────────────────────
+# Core dependencies – required for the Streamlit dashboard
+# ──────────────────────────────────────────────────────────────
+streamlit>=1.30          # Web interface
+pandas>=2.0              # Data handling and preprocessing
+numpy>=1.24              # Numerical operations and distance calculations
+plotly>=5.18             # Interactive visualizations
+matplotlib>=3.7 	     # for pandas styler
+
+# ──────────────────────────────────────────────────────────────
+# MILP Solvers – only one is needed at runtime
+# ──────────────────────────────────────────────────────────────
+pyscipopt>=4.3.0         # Free academic/open-source solver (default fallback)
+gurobipy>=11.0; python_version>='3.9' \
+                         # Optional – significantly faster if Gurobi license is available
+                         # (the code automatically falls back to SCIP if not installed)
