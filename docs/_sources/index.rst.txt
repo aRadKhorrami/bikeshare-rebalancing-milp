@@ -27,6 +27,7 @@ Sample Input Files
 The project uses real Capital Bikeshare data from October 2025:
 
     Trip data: https://s3.amazonaws.com/capitalbikeshare-data/index.html
+    
     Station locations: https://opendata.dc.gov/datasets/DCGIS::capital-bikeshare-locations/explore
 
 Modules
