@@ -23,7 +23,8 @@ import data
 def solve_model(use_fleet_constraint=False, data_source='sample',
                 h=0.1, p=10.0, F=5, M=10000,
                 subset_stations=None, subset_times=None,
-                time_limit=300, gap_limit=0.01, solver="scip"):  
+                time_limit=300, gap_limit=0.01, service_level=None,  # e.g., 0.9 for 90% fulfillment (None = disabled) 
+                solver="scip"):  
     """
     Solve the bikeshare rebalancing MILP using SCIP or Gurobi.
 
@@ -53,6 +54,10 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
         Subset of time periods to solve (e.g., first 12 two-hour periods).
     time_limit : int, default=300
         Maximum solving time in seconds.
+    service_level : float or None, default=None
+            Minimum demand fulfillment fraction (e.g., 0.9 for 90%). 
+            Adds constraint B_{i,t} ≤ (1 - service_level) × D_{i,t} (from PDF Section 8).
+            If None, no constraint is added.        
     solver : {'scip', 'gurobi'}, default='scip'
         MILP solver to use. Gurobi is significantly faster for large instances.
 
@@ -147,9 +152,12 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
                         for t in T:
                             model.addConstr(f[(i,j,t)] <= M * x[(i,j,t)], name=f"link_{i}_{j}_{t}")
         # Service-level constraint from PDF Section 8: B_i,t <= 0.1 * D_i,t (90% fulfillment per station-period)
-        for i in S:
-            for t in T:
-                model.addConstr(B[(i,t)] <= 0.1 * D[(i,t)], name=f"service_{i}_{t}")
+        if service_level is not None:
+                max_unmet_fraction = 1.0 - service_level  # e.g., 0.1 for 90%
+                for i in S:
+                    for t in T:
+                        model.addConstr(B[(i,t)] <= max_unmet_fraction * D[(i,t)],
+                                    name=f"service_{i}_{t}")
 
         # Optimize
         model.optimize()
@@ -216,9 +224,12 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
                             model.addCons(f[(i,j,t)] <= M * x[(i,j,t)], f"link_{i}_{j}_{t}")
         
         # Service-level constraint from PDF Section 8: B_i,t <= 0.1 * D_i,t (90% fulfillment per station-period)
-        for i in S:
-            for t in T:
-                model.addCons(B[(i,t)] <= 0.1 * D[(i,t)], name=f"service_{i}_{t}")
+        if service_level is not None:
+                max_unmet_fraction = 1.0 - service_level  # e.g., 0.1 for 90%
+                for i in S:
+                    for t in T:
+                        model.addCons(B[(i,t)] <= max_unmet_fraction * D[(i,t)],
+                                    name=f"service_{i}_{t}")
 
         model.optimize()
         status = model.getStatus()

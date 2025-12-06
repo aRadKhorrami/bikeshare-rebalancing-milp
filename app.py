@@ -27,7 +27,7 @@ import os
 
 # Page config
 st.set_page_config(page_title="Bikeshare Rebalancing - Ali Rad Khorrami", layout="wide")
-st.title("Bikeshare Rebalancing Problem: Final MILP Model")
+st.title("Bikeshare Rebalancing Problem: UC MILP Model")
 st.markdown("**Ali Rad Khorrami** – December 2025")
 st.markdown("---")
 
@@ -93,6 +93,21 @@ with st.sidebar:
         For large problems, even 1% gap solutions are often good enough!
         """) 
 
+    st.markdown("### Service Level")
+    use_service_level = st.checkbox("Enforce Minimum Service Level", value=True)
+    if use_service_level:
+        service_level_pct = st.slider(
+            "Minimum demand fulfillment (%)",
+            min_value=70,
+            max_value=99,
+            value=90,
+            step=1,
+            help="Ensures unmet demand B_{i,t} ≤ (100 - %) × D_{i,t} per station-period (from PDF Section 8)"
+        )
+        service_level = service_level_pct / 100.0  # e.g., 0.9 for 90%
+    else:
+        service_level = None  # No constraint
+
     st.markdown("### Solver")
     solver_choice = st.radio(
         "Select MILP Solver",
@@ -140,6 +155,7 @@ if st.button("RUN OPTIMIZATION", type="primary", use_container_width=True):
             subset_times=subset_t,
             time_limit=time_limit,
             gap_limit=gap_limit/100.0,  # Convert percentage to decimal
+            service_level=service_level,
             solver="gurobi" if "Gurobi" in solver_choice else "scip"   
         )
 
@@ -201,7 +217,7 @@ if st.button("RUN OPTIMIZATION", type="primary", use_container_width=True):
                 df_s = I_df[I_df["Station"] == station]
                 fig.add_trace(go.Scatter(
                     x=df_s["Time"], y=df_s["Bikes"],
-                    mode='lines+markers', name=station[:30]
+                    mode='lines+markers', name = str(station) if isinstance(station, int) else station[:30] # name=station[:30]
                 ))
             fig.update_layout(
                 xaxis_title="Time Period",
