@@ -108,7 +108,7 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
     if solver.lower() == "gurobi":
         model = GurobiModel("Bikeshare_Rebalancing_Gurobi")
         model.setParam('TimeLimit', time_limit)
-        model.setParam('OutputFlag', 0)  # Suppress Gurobi log (optional)
+        model.setParam('OutputFlag', 1)  # 0 = Suppress Gurobi log (optional)
         if gap_limit > 0:
             model.setParam('MIPGap', gap_limit)  # Set gap tolerance for Gurobi
 
@@ -151,6 +151,7 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
                     if i != j:
                         for t in T:
                             model.addConstr(f[(i,j,t)] <= M * x[(i,j,t)], name=f"link_{i}_{j}_{t}")
+
         # Service-level constraint from PDF Section 8: B_i,t <= 0.1 * D_i,t (90% fulfillment per station-period)
         if service_level is not None:
                 max_unmet_fraction = 1.0 - service_level  # e.g., 0.1 for 90%

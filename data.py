@@ -129,6 +129,7 @@ def load_station_data(station_file):
                 lat2, lon2 = coords[j]
                 c[(i,j)] = np.sqrt((lat1-lat2)**2 + (lon1-lon2)**2)
     
+    # map each station to its initial bike inventory (roughly 50% of capacity, but at least 1 bike).
     I0 = {s: max(1, int(C[s] * 0.5)) for s in stations}
     
     print(f"   → Using 'NAME' as station key for matching")
