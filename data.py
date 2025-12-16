@@ -168,8 +168,9 @@ def load_real_data(trip_file, station_file, time_bin='2h'):
     I0 = {i: I0[i] for i in common}
     C = {i: C[i] for i in common}
     c = {(i,j): c.get((i,j), 0) for i in common for j in common if i != j}
+    coords = {i: coords[i] for i in common}  # NEW: Filter and return coords
     
     h, p, F = 0.1, 10.0, 5
     M = sum(C.values())
     
-    return common, times, I0, C, D, c, h, p, F, M
+    return common, times, I0, C, D, c, h, p, F, M, coords  # NEW: Add coords to return

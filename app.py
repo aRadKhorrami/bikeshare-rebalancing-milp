@@ -19,6 +19,7 @@ Project: Final MILP Model for Bikeshare Rebalancing
 """
 import streamlit as st
 import pandas as pd
+import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from model import solve_model
@@ -131,7 +132,7 @@ if st.button("RUN OPTIMIZATION", type="primary", use_container_width=True):
                 f.write(station_file.getbuffer())
 
             # Load real data
-            S_full, T_full, _, _, D_full, _, _, _, _, _ = data.load_real_data(
+            S_full, T_full, _, _, D_full, _, _, _, _, _, _ = data.load_real_data(
                 "temp_trip.csv", "temp_station.csv", time_bin=time_bin)
 
             # Select top N stations
@@ -182,7 +183,7 @@ if st.button("RUN OPTIMIZATION", type="primary", use_container_width=True):
             st.warning(f"Feasible solution found • Best known cost: {obj_val}")
 
         # === Show results tabs even if not fully optimal ===
-        tab1, tab2, tab3, tab4 = st.tabs(["Inventory", "Unmet Demand", "Rebalancing Plan", "Visualization"])
+        tab1, tab2, tab3, tab4, tab5 = st.tabs(["Inventory", "Unmet Demand", "Rebalancing Plan", "Visualization", "Rebalancing Map"])
 
         with tab1:
             st.subheader("Bike Inventory Over Time (I_{i,t})")
@@ -226,6 +227,151 @@ if st.button("RUN OPTIMIZATION", type="primary", use_container_width=True):
                 height=600
             )
             st.plotly_chart(fig, use_container_width=True)
+
+        with tab5:
+            st.subheader("Animated Rebalancing Map")
+            
+            if 'coords' in results and results['coords']:
+                # Extract data for map
+                S = sorted(set(s for (s, t) in results['I']))
+                T = sorted(set(t for (s, t) in results['I']))
+                f_data = results['f']
+                I_data = results['I']
+                coords = results['coords']                
+                
+                
+                # Function to create the animated map
+                def create_animated_rebalancing_map(stations, coords, f_data, I_data, time_periods):
+                    fig = go.Figure()
+                    
+                    # Base stations (markers)
+                    lats = [coords[s][0] for s in stations if s in coords]
+                    lons = [coords[s][1] for s in stations if s in coords]
+                    fig.add_trace(go.Scattermapbox(
+                        lat=lats, lon=lons, mode='markers',
+                        marker=go.scattermapbox.Marker(size=10, color='blue'),
+                        text=stations, name='Stations'
+                    ))
+                    
+                    # Create frames for animation
+                    frames = []
+
+                    for tim in time_periods:
+                        # 1. Calculate station sizes for this time period
+                        sizes = [max(5, I_data.get((s, tim), 0) * 2) for s in stations]
+                        
+                        # 2. Collect movement lines for this time period
+                        line_lats, line_lons, line_texts = [], [], []
+                        arrow_lats, arrow_lons, arrow_sizes, arrow_texts = [], [], [], []
+                        
+                        for (i, j, t), val in f_data.items():
+                            if t == tim and val > 0 and i in coords and j in coords:
+                                lat1, lon1 = coords[i]
+                                lat2, lon2 = coords[j]
+                                
+                                # Movement line
+                                line_lats.extend([lat1, lat2, None])
+                                line_lons.extend([lon1, lon2, None])
+                                line_texts.append(f'Move {val:.0f} bikes from {i} to {j}')
+                                
+                                # Arrowhead at destination
+                                arrow_lats.append(lat2)
+                                arrow_lons.append(lon2)
+                                arrow_sizes.append(max(10, val * 2))
+                                arrow_texts.append(f'To: {j}')
+                        
+                        # 3. Create frame with ALL THREE traces
+                        frame_traces = []
+                        
+                        # Trace 1: Movement lines (if any)
+                        if line_lats:  # Only add if there are movements
+                            frame_traces.append(
+                                go.Scattermapbox(
+                                    lat=line_lats, lon=line_lons, mode='lines',
+                                    line=dict(width=2, color='red'),
+                                    text=line_texts,
+                                    name='Movements',
+                                    showlegend=(tim == min(time_periods))  # Show in legend only for first frame
+                                )
+                            )
+                        
+                        # Trace 2: Stations (ALWAYS include)
+                        frame_traces.append(
+                            go.Scattermapbox(
+                                lat=lats, lon=lons, mode='markers',
+                                marker=go.scattermapbox.Marker(size=sizes, color='blue'),
+                                text=[f"{s}: {I_data.get((s, tim), 0):.0f} bikes" for s in stations],
+                                name='Stations',
+                                showlegend=(tim == min(time_periods))  # Show in legend only for first frame
+                            )
+                        )
+                        
+                        # Trace 3: Arrowheads (if any)
+                        if arrow_lats:  # Only add if there are arrowheads
+                            frame_traces.append(
+                                go.Scattermapbox(
+                                    lat=arrow_lats, lon=arrow_lons, mode='markers',
+                                    marker=go.scattermapbox.Marker(
+                                        size=arrow_sizes, 
+                                        color='red'#, 
+                                        #symbol='square'
+                                    ),
+                                    text=arrow_texts,
+                                    name='Destinations',
+                                    showlegend=False  # Don't clutter legend
+                                )
+                            )
+                        
+                        # Create the frame with all traces
+                        frame = go.Frame(
+                            data=frame_traces,  # This should contain ALL traces for this frame
+                            name=str(tim)
+                        )
+                        
+                        frames.append(frame)
+
+                    # Initial figure data (first frame's data)
+                    if frames:
+                        fig.add_traces(frames[0].data)  # Add the first frame's traces
+                        fig.frames = frames  # Set all frames
+                    
+                    # Slider and buttons
+                    sliders = [dict(
+                        steps=[dict(method='animate', 
+                                    args=[[str(t)], 
+                                        dict(mode='immediate', 
+                                            frame=dict(duration=500, redraw=True), 
+                                            transition=dict(duration=300))],
+                                    label=f'Time {t}') for t in time_periods],
+                        active=0, transition=dict(duration=300), x=0, y=0,
+                        currentvalue=dict(font=dict(size=12), prefix='Time Period: ', visible=True, xanchor='center'),
+                        len=1.0
+                    )]
+                    
+                    fig.update_layout(
+                        mapbox=dict(style='open-street-map', 
+                                center=go.layout.mapbox.Center(lat=np.mean(lats), lon=np.mean(lons)), 
+                                zoom=12),
+                        updatemenus=[dict(type='buttons', buttons=[
+                            dict(label='Play', method='animate', 
+                                args=[None, dict(frame=dict(duration=1000, redraw=True), 
+                                                transition=dict(duration=600), 
+                                                fromcurrent=True)]),
+                            dict(label='Pause', method='animate', 
+                                args=[[None], dict(frame=dict(duration=0, redraw=False), 
+                                                mode='immediate', 
+                                                transition=dict(duration=0))])
+                        ])],
+                        sliders=sliders,
+                        height=600
+                    )
+                    return fig
+                
+                # Create and render the figure
+                fig = create_animated_rebalancing_map(S, coords, f_data, I_data, T)
+                st.plotly_chart(fig, use_container_width=True)
+            else:
+                st.info("Interactive map not available for sample data or when coordinates are missing.")
 
         # Download button
         csv = pd.DataFrame.from_dict(results['I'], orient='index', columns=['Bikes']).to_csv()

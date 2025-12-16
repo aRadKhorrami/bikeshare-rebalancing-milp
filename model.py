@@ -86,14 +86,17 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
     # Load data (same as before)
     if data_source == 'sample':
         S, T, I0, C, D, c, _, _, _, _ = data.get_sample_data()
+        coords = None  # NEW: No coords for sample
     else:
-        S, T, I0, C, D, c, _, _, _, _ = data.load_real_data(
+        S, T, I0, C, D, c, _, _, _, _, coords = data.load_real_data( # NEW: Unpack coords
             '202510-capitalbikeshare-tripdata.csv',
             'Capital_Bikeshare_Locations.csv'
         )
 
     if subset_stations:
         S = [s for s in S if s in subset_stations]
+        if coords:
+            coords = {s: coords[s] for s in S}  # NEW: Subset coords        
     if subset_times:
         T = [t for t in T if t in subset_times]
 
@@ -175,6 +178,7 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
             }
             if use_fleet_constraint:
                 results['x'] = {(i,j,t): x[(i,j,t)].X for i in S for j in S if i != j for t in T}
+            results['coords'] = coords  # NEW: Add to results
             return results, status
         else:
             return None, status
@@ -270,6 +274,7 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
                     if use_fleet_constraint:
                         results['x'] = {(i,j,t): model.getVal(x[(i,j,t)]) 
                                         for i in S for j in S if i != j for t in T}
+                    results['coords'] = coords  # NEW: Add to results
                     return results, status
                 else:
                     return None, "no_solution_found"
