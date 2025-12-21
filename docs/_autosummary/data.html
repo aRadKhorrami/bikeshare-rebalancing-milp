@@ -38,13 +38,16 @@
 <span id="data"></span><h1>data<a class="headerlink" href="#module-data" title="Link to this heading">¶</a></h1>
 <section id="data-loading-and-preprocessing-for-bikeshare-rebalancing">
 <h2>Data Loading and Preprocessing for Bikeshare Rebalancing<a class="headerlink" href="#data-loading-and-preprocessing-for-bikeshare-rebalancing" title="Link to this heading">¶</a></h2>
-<p>This module handles loading and preprocessing of real Capital Bikeshare data
-from October 2025 for use in the MILP rebalancing model.</p>
-<p>Key features:
-- Matches trip data with station metadata using station names
-- Aggregates demand by user-defined time bins (1h, 2h, 4h)
-- Computes Euclidean distance matrix as transportation cost proxy
-- Sets realistic initial inventory (~50% capacity)</p>
+<p>This module loads and preprocesses Capital Bikeshare trip and station data
+(e.g., from October 2025) for the Mixed-Integer Linear Programming (MILP)
+rebalancing model.</p>
+<p>Key Features:
+- Matches trips to stations using exact station names
+- Aggregates outbound trip demand into time bins (e.g., ‘1h’, ‘2h’, ‘4h’)
+- Computes Euclidean distances as a proxy for transportation costs
+- Initializes inventory at approximately 50% of station capacity
+- Provides sample data for testing</p>
+<p>Dependencies: NumPy, Pandas.</p>
 </section>
 <p class="rubric">Functions</p>
 <table class="autosummary longtable docutils align-default">
@@ -53,13 +56,13 @@ from October 2025 for use in the MILP rebalancing model.</p>
 <td><p>Return small synthetic dataset for quick testing and debugging.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_real_data</span></code>(trip_file, station_file[, ...])</p></td>
-<td><p>Load and merge real trip and station data for the MILP model.</p></td>
+<td><p>Integrate trip demands with station metadata for MILP inputs.</p></td>
 </tr>
 <tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">load_station_data</span></code>(station_file)</p></td>
-<td><p>Load station metadata (name, capacity, coordinates) from CSV.</p></td>
+<td><p>Parse station CSV for capacities, coordinates, and derived parameters.</p></td>
 </tr>
 <tr class="row-even"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">process_trip_data_to_demands</span></code>(trip_file[, ...])</p></td>
-<td><p>Convert raw trip CSV into demand matrix D_it.</p></td>
+<td><p>Aggregate outbound trip starts from CSV into a demand matrix D_{i,t}.</p></td>
 </tr>
 </tbody>
 </table>

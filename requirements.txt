@@ -8,9 +8,18 @@ plotly>=5.18             # Interactive visualizations
 matplotlib>=3.7 	     # for pandas styler
 
 # ──────────────────────────────────────────────────────────────
+# Geospatial and mapping dependencies – for Folium/GeoPandas visualizations
+# ──────────────────────────────────────────────────────────────
+folium>=0.20.0           # Interactive maps
+branca>=0.8.0            # Colormaps and HTML/JS utilities for Folium
+geopandas>=1.1.0         # Geospatial data handling (pulls shapely, pyproj, etc.)
+shapely>=2.0.0           # Geometric operations (dependency of geopandas)
+streamlit-folium>=0.25.0 # Streamlit component for rendering Folium maps
+
+# ──────────────────────────────────────────────────────────────
 # MILP Solvers – only one is needed at runtime
 # ──────────────────────────────────────────────────────────────
 pyscipopt>=4.3.0         # Free academic/open-source solver (default fallback)
 gurobipy>=11.0; python_version>='3.9' \
                          # Optional – significantly faster if Gurobi license is available
-                         # (the code automatically falls back to SCIP if not installed)
+

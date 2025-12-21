@@ -11,7 +11,8 @@ over a discrete time horizon using real Capital Bikeshare data from October 2025
 
 Mathematical formulation matches Sections 5–6 of the proposal:
 - Objective: min Σ c_ij f_ijt + h Σ I_it + p Σ B_it
-- Constraints: bike balance, capacity, non-negativity, optional fleet size
+- Constraints: bike balance, capacity, non-negativity, optional fleet size 
+- Optional service level
 
 Supports both **SCIP** and **Gurobi** solvers (Gurobi recommended for large instances).
 """
@@ -83,12 +84,12 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
     --------
     data.load_real_data : Loads and processes real October 2025 data.
     """
-    # Load data (same as before)
+    # Load parameters (S, T, I0, C, D, c, coords)
     if data_source == 'sample':
         S, T, I0, C, D, c, _, _, _, _ = data.get_sample_data()
-        coords = None  # NEW: No coords for sample
+        coords = None  # For sample: No coordinates available
     else:
-        S, T, I0, C, D, c, _, _, _, _, coords = data.load_real_data( # NEW: Unpack coords
+        S, T, I0, C, D, c, _, _, _, _, coords = data.load_real_data( 
             '202510-capitalbikeshare-tripdata.csv',
             'Capital_Bikeshare_Locations.csv'
         )
@@ -96,7 +97,7 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
     if subset_stations:
         S = [s for s in S if s in subset_stations]
         if coords:
-            coords = {s: coords[s] for s in S}  # NEW: Subset coords        
+            coords = {s: coords[s] for s in S}  # Subset coordinates accordingly        
     if subset_times:
         T = [t for t in T if t in subset_times]
 
@@ -106,8 +107,9 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
     c = {(i,j): c.get((i,j), 0) for i in S for j in S if i != j}
 
     # ========================
-    # SOLVER-SPECIFIC SETUP
+    # SETUP AND SOLVE MODEL
     # ========================
+    # Branch by solver; define variables, objective, constraints.
     if solver.lower() == "gurobi":
         model = GurobiModel("Bikeshare_Rebalancing_Gurobi")
         model.setParam('TimeLimit', time_limit)
@@ -125,7 +127,7 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
             x = {(i,j,t): model.addVar(vtype=GRB.BINARY, name=f"x_{i}_{j}_{t}")
                  for i in S for j in S if i != j for t in T}
 
-        # Objective
+        # Objective: Minimize total cost (transport + holding + penalty)
         obj = (sum(c[(i,j)] * f[(i,j,t)] for i in S for j in S if i != j for t in T) +
                h * sum(I[(i,t)] for i in S for t in T) +
                p * sum(B[(i,t)] for i in S for t in T))
@@ -133,6 +135,7 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
 
         # Constraints
         min_t = min(T)
+        # Bike balance (6.1): I_{i,t} = prev + in - out - D + B
         for i in S:
             for t in T:
                 prev = I[(i, t-1)] if t > min_t else I0[i]
@@ -141,10 +144,12 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
                 model.addConstr(I[(i,t)] == prev + inflow - outflow - D[(i,t)] + B[(i,t)],
                                 name=f"balance_{i}_{t}")
 
+        # Capacity (6.2): I <= C
         for i in S:
             for t in T:
                 model.addConstr(I[(i,t)] <= C[i], name=f"cap_{i}_{t}")
 
+        # Optional fleet (6.4): sum x <= F, f <= M x
         if use_fleet_constraint:
             for t in T:
                 model.addConstr(sum(x[(i,j,t)] for i in S for j in S if i != j) <= F,
@@ -163,8 +168,9 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
                         model.addConstr(B[(i,t)] <= max_unmet_fraction * D[(i,t)],
                                     name=f"service_{i}_{t}")
 
-        # Optimize
+        # Solve the model
         model.optimize()
+        # Map Gurobi status codes to strings
         status = "optimal" if model.Status == GRB.OPTIMAL else \
                  "timelimit" if model.Status == GRB.TIME_LIMIT else "infeasible"
 
@@ -174,7 +180,7 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
                 'f': {(i,j,t): f[(i,j,t)].X for i in S for j in S if i != j for t in T},
                 'I': {(i,t): I[(i,t)].X for i in S for t in T},
                 'B': {(i,t): B[(i,t)].X for i in S for t in T},
-                'obj_val': obj_val
+                'obj_val': obj_val  # Note: 'is_optimal' and 'gap' not directly from Gurobi here; add if needed
             }
             if use_fleet_constraint:
                 results['x'] = {(i,j,t): x[(i,j,t)].X for i in S for j in S if i != j for t in T}
@@ -183,7 +189,7 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
         else:
             return None, status
 
-    else:  # Default: SCIP (original code)
+    else:  # SCIP solver branch
         model = SCIPModel("Bikeshare_Rebalancing")
         model.setParam('limits/time', time_limit)
 
@@ -236,10 +242,11 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
                         model.addCons(B[(i,t)] <= max_unmet_fraction * D[(i,t)],
                                     name=f"service_{i}_{t}")
 
+        # Solve with SCIP
         model.optimize()
         status = model.getStatus()
 
-        if status in ["optimal", "timelimit", "gaplimit", "userinterrupt"]:
+        if status in ["optimal", "timelimit", "gaplimit", "userinterrupt"]:  # Handle feasible statuses (may have solution)
             try:
                 # Try to get the best found solution
                 if model.getNSols() > 0:  # If at least one solution was found
@@ -247,7 +254,7 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
                     is_optimal = (status == "optimal")
                     
                     # Get gap for both timelimit AND gap limit reached
-                    if status in ["timelimit", "gaplimit"]:
+                    if status in ["timelimit", "gaplimit"]:  # Compute relative gap for non-optimal cases
                         try:
                             gap_value = model.getGap()
                             if gap_value is None:
@@ -268,7 +275,7 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
                         'I': {(i,t): model.getVal(I[(i,t)]) for i in S for t in T},
                         'B': {(i,t): model.getVal(B[(i,t)]) for i in S for t in T},
                         'obj_val': obj_val,
-                        'is_optimal': is_optimal,  
+                        'is_optimal': is_optimal,  # Include solution quality metrics
                         'gap': gap_value
                     }
                     if use_fleet_constraint:

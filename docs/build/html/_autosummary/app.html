@@ -38,18 +38,29 @@
 <section id="bikeshare-rebalancing-dashboard">
 <h2>Bikeshare Rebalancing Dashboard<a class="headerlink" href="#bikeshare-rebalancing-dashboard" title="Link to this heading">¶</a></h2>
 <p>Interactive Streamlit web application for solving and visualizing
-the bikeshare rebalancing MILP model on real or sample data.</p>
-<p>Features:
-- Upload real October 2025 trip and station data
-- Select top N busiest stations and time horizon
-- Choose between SCIP and Gurobi solvers
-- View inventory, unmet demand, and rebalancing plan
-- Interactive Plotly visualizations
-- Download results as CSV</p>
+the bikeshare rebalancing Mixed-Integer Linear Programming (MILP) model
+using real or sample data from Capital Bikeshare.</p>
+<p>Key Features:
+- Upload real trip data (e.g., October 2025) and station locations
+- Select top N busiest stations and optimization time horizon
+- Choose between open-source SCIP (via PySCIPOpt) or commercial Gurobi solvers
+- Visualize inventory levels, unmet demand, and truck rebalancing plans
+- Interactive maps with Folium/GeoPandas, including time-based animations
+- Export results as CSV for further analysis</p>
+<p>Dependencies: Streamlit, Pandas, NumPy, Plotly, Folium, GeoPandas, Branca, PySCIPOpt (for SCIP), Gurobi (optional).
+Setup: Run <cite>streamlit run app_folium.py</cite> after installing dependencies.</p>
 <p>Author: Ali Rad Khorrami
 Date: December 2025
 Project: Final MILP Model for Bikeshare Rebalancing</p>
 </section>
+<p class="rubric">Functions</p>
+<table class="autosummary longtable docutils align-default">
+<tbody>
+<tr class="row-odd"><td><p><code class="xref py py-obj docutils literal notranslate"><span class="pre">create_arrowhead</span></code>(start_lat, start_lon, ...)</p></td>
+<td><p>Calculate coordinates for a triangular arrowhead at the end of a line segment.</p></td>
+</tr>
+</tbody>
+</table>
 </section>
 
 
