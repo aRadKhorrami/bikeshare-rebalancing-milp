@@ -23,3 +23,7 @@ pyscipopt>=4.3.0         # Free academic/open-source solver (default fallback)
 gurobipy>=11.0; python_version>='3.9' \
                          # Optional – significantly faster if Gurobi license is available
 
+# ──────────────────────────────────────────────────────────────
+# Python version constraint (should match all packages)
+# ──────────────────────────────────────────────────────────────
+# Implicitly requires Python 3.9+ due to gurobipy
