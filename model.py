@@ -25,7 +25,9 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
                 h=0.1, p=10.0, F=5, M=10000,
                 subset_stations=None, subset_times=None,
                 time_limit=300, gap_limit=0.01, service_level=None,  # e.g., 0.9 for 90% fulfillment (None = disabled) 
-                solver="scip"):  
+                solver="scip",
+                trip_file_path=None,  
+                station_file_path=None):  
     """
     Solve the bikeshare rebalancing MILP using SCIP or Gurobi.
 
@@ -90,8 +92,8 @@ def solve_model(use_fleet_constraint=False, data_source='sample',
         coords = None  # For sample: No coordinates available
     else:
         S, T, I0, C, D, c, _, _, _, _, coords = data.load_real_data( 
-            '202510-capitalbikeshare-tripdata.csv',
-            'Capital_Bikeshare_Locations.csv'
+            trip_file_path,  
+            station_file_path  
         )
 
     if subset_stations:

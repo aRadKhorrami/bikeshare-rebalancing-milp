@@ -124,7 +124,7 @@ with st.sidebar:
     if not use_sample:
         st.info("Upload your real files below")
         trip_file = st.file_uploader("202510-capitalbikeshare-tripdata.csv", type="csv", key='trip_file',
-                                      help="Upload the trip data CSV for October 2025 (must include 'started_at' and 'start_station_name' columns).")
+                                      help="Upload the trip data CSV for October 2025 or another month(must include 'started_at' and 'start_station_name' columns).")
         station_file = st.file_uploader("Capital_Bikeshare_Locations.csv", type="csv", key='station_file',
                                         help="Upload the station locations CSV (must include 'NAME', 'LATITUDE', 'LONGITUDE', and 'CAPACITY' or equivalents).")
         time_bin = st.selectbox("Time granularity", ['1h', '2h', '4h'], index=1, key='time_bin',
@@ -166,7 +166,7 @@ with st.sidebar:
     st.session_state.config.update({'use_fleet': use_fleet, 'F': F})
     
     st.markdown("#### ⏱️ Time Limit")
-    time_limit = st.number_input("Max solving time (seconds)", 30, 1200, 300, key='time_limit',
+    time_limit = st.number_input("Max solving time (seconds)", 30, 12000, 300, key='time_limit',
                                  help="Maximum time (in seconds) allowed for the solver to find a solution.")
     st.session_state.config['time_limit'] = time_limit
 
@@ -319,7 +319,9 @@ if st.session_state.get('run_optimization', False):
                 time_limit=time_limit,
                 gap_limit=gap_limit/100.0,
                 service_level=service_level,
-                solver="gurobi" if "Gurobi" in solver_choice else "scip"   
+                solver="gurobi" if "Gurobi" in solver_choice else "scip",
+                trip_file_path="temp_trip.csv" if data_source == 'real' else None, 
+                station_file_path="temp_station.csv" if data_source == 'real' else None  
             )
 
             st.session_state.results = results
